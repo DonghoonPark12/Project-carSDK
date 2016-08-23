@@ -11,6 +11,9 @@
 // gcc  -o captureOpenCV captureOpenCV.o nvthread.o  -L ./utils -lnvmedia -lnvtestutil_board -lnvtestutil_capture_input -lnvtestutil_i2c -lpthread `pkg-config opencv --libs`
 // last update
 // dh test
+//1
+//2
+//3
 
 #include <stdio.h>
 #include <stdlib.h>
