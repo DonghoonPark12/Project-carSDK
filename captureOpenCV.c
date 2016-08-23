@@ -1,8 +1,7 @@
-<<<<<<< HEAD
 /* 
 =======
 //For Git test - Eunji
-
+*/
 /*
 >>>>>>> 91c41f7ef76eb87c6f3b00d5a60a624e2a434029
  * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
@@ -16,7 +15,23 @@
 // gcc -I. -I./utils `pkg-config opencv --cflags` -I./include  -c -o nvthread.o nvthread.c
 // gcc  -o captureOpenCV captureOpenCV.o nvthread.o  -L ./utils -lnvmedia -lnvtestutil_board -lnvtestutil_capture_input -lnvtestutil_i2c -lpthread `pkg-config opencv --libs`
 // last update
+// dh test
+// juyeol added
+// i wish to be well this KT
+
+
+
+
+//hahahahahahahahah_jung
+
+
+
+
+
+
+
 #include <stdio.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
