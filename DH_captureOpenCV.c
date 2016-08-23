@@ -1,17 +1,15 @@
-/* 
+/*
  * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  * All information contained herein is proprietary and confidential to NVIDIA
  * Corporation.  Any use, reproduction, or disclosure without the written
  * permission of NVIDIA Corporation is prohibited.
- */
-
+ *-
+*/
 // edited by Hyundai Autron
 // gcc -I. -I./utils `pkg-config opencv --cflags` -I./include  -c -o captureOpenCV.o captureOpenCV.c
 // gcc -I. -I./utils `pkg-config opencv --cflags` -I./include  -c -o nvthread.o nvthread.c
 // gcc  -o captureOpenCV captureOpenCV.o nvthread.o  -L ./utils -lnvmedia -lnvtestutil_board -lnvtestutil_capture_input -lnvtestutil_i2c -lpthread `pkg-config opencv --libs`
-// last update
-// dh test
-// juyeol added
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +29,12 @@
 #include <ResTable_720To320.h>
 #include <pthread.h>
 #include <unistd.h>     // for sleep
+#include "car_lib.h"
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define VIP_BUFFER_SIZE 6
 #define VIP_FRAME_TIMEOUT_MS 100
@@ -54,10 +58,13 @@ int table_100[256];
 int table_208[256];
 int table_516[256];
 
+int left_obstacle=0;
+int right_obstacle=0;
+int direction_flag=0;
 typedef struct
 {
     I2cId i2cDevice;
-  
+ 
     CaptureInputDeviceId vipDeviceInUse;
     NvMediaVideoCaptureInterfaceFormat vipInputtVideoStd;
     unsigned int vipInputWidth;
@@ -146,14 +153,13 @@ static NvBool SubTime(NvMediaTime *time1, NvMediaTime *time2)
     return delta > 0LL;
 }
 
-
-static void DisplayUsage(void)
+static void DisplayUsage()
 {
     printf("Usage : nvmedia_capture [options]\n");
     printf("Brief: Displays this help if no arguments are given. Engages the respective capture module whenever a single \'c\' or \'v\' argument is supplied using default values for the missing parameters.\n");
     printf("Options:\n");
     printf("-va <aspect ratio>    VIP aspect ratio (default = 1.78 (16:9))\n");
-    printf("-vmr <width>x<height> VIP mixer resolution (default 800x480)\n");
+    printf("-vmr <width>x<height> VIP mixer resEEolution (default 800x480)\n");
     printf("-vf <file name>       VIP output file name; default = off\n");
     printf("-vt [seconds]         VIP capture duration (default = 10 secs); overridden by -vn; default = off\n");
     printf("-vn [frames]          # VIP frames to be captured (default = 300); default = on if -vt is not used\n");
@@ -184,7 +190,7 @@ static int ParseOptions(int argc, char *argv[], TestArgs *args)
     args->vipCaptureTime = 0;
     args->vipCaptureCount = 0;
 
-  
+ 
 
     if(i < argc && argv[i][0] == '-')
     {
@@ -346,13 +352,17 @@ static int DumpFrame(FILE *fout, NvMediaVideoSurface *surf)
     return 1;
 }
 
-static int Frame2Ipl(IplImage* img)
+static int Frame2Ipl(IplImage* img, IplImage* result)
 {
     NvMediaVideoSurfaceMap surfMap;
     unsigned int resWidth, resHeight;
     char r,g,b;
     unsigned char y,u,v;
     int num;
+   
+    //FILE* fd;   //<--------------------------------------------------------------------------
+
+    //fd = fopen("kkk.txt", "w+"); //<-------------------------------------------------------
 
     if(NvMediaVideoSurfaceLock(capSurf, &surfMap) != NVMEDIA_STATUS_OK)
     {
@@ -368,22 +378,22 @@ static int Frame2Ipl(IplImage* img)
     unsigned int pitchV[2] = {surfMap.pitchV, surfMap.pitchV2};
     unsigned int i, j, k, x;
     unsigned int stepY, stepU, stepV;
-    
+   
     resWidth = RESIZE_WIDTH;
     resHeight = RESIZE_HEIGHT;
-    
+   
     // Frame2Ipl
     img->nSize = 112;
     img->ID = 0;
     img->nChannels = 3;
     img->alphaChannel = 0;
     img->depth = IPL_DEPTH_8U;    // 8
-    img->colorModel[0] = 'R';
-    img->colorModel[1] = 'G';
-    img->colorModel[2] = 'B';
-    img->channelSeq[0] = 'B';
-    img->channelSeq[1] = 'G';
-    img->channelSeq[2] = 'R';
+    img->colorModel[0] = 'Y';
+    img->colorModel[1] = 'U';
+    img->colorModel[2] = 'V';
+    img->channelSeq[0] = 'Y';
+    img->channelSeq[1] = 'U';
+    img->channelSeq[2] = 'V';
     img->dataOrder = 0;
     img->origin = 0;
     img->align = 4;
@@ -399,49 +409,82 @@ static int Frame2Ipl(IplImage* img)
     img->BorderConst[1] = 0;
     img->BorderConst[2] = 0;
     img->BorderConst[3] = 0;
-    
+   
     stepY = 0;
     stepU = 0;
     stepV = 0;
     i = 0;
-    
+   /*
     for(j = 0; j < resHeight; j++)
     {
+        for(k = 0; k < resWidth; k++)
+        {
+            imgResult->imageData[j*imgCenter->widthStep + k]=0;
+        }
+    }
+   */
+
+    for(j = 0; j < resHeight; j++)
+    {
+
         for(k = 0; k < resWidth; k++)
         {
             x = ResTableX_720To320[k];
             y = pY[i][stepY+x];
             u = pU[i][stepU+x/2];
             v = pV[i][stepV+x/2];
+
             
-            // YUV to RGB (fast but somewhat inaccurate)
-            //r =  ( table_298[y] + table_409[v] ) >> 8;
-            //g =  ( table_298[y] - table_100[u] - table_208[v] ) >> 8;
-            //b =  ( table_298[y] + table_516[u] ) >> 8;
-            //r =  ( 298*(y-16) + 409*(v-128) + 128 ) >> 8;
-            //g =  ( 298*(y-16) - 100*(u-128) - 208*(v-128) + 128 ) >> 8;
-            //b =  ( 298*(y-16) + 516*(u-128) + 128 ) >> 8;
+            //134 127 //90 105
+            //138 125
+            if( (u >= 135) &&(u <= 141)  && v <= 128 && v >= 122) {
+                //count green light
+                //obstacle++;
+                result->imageData[j * result->widthStep + k] = (char)255;
 
-            // YUV to RGB (accurate but slow)
-            r = 1.164*(y-16) + 1.596*(v-128); 
-            g = 1.164*(y-16) - 0.813*(v-128) - 0.391*(u-128); 
-            b = 1.164*(y-16) + 2.018*(u-128);  
+            }
+            else {
+                // 검정색으로
+                result->imageData[j * result->widthStep + k] = (char)0;
+            }           
+    
+           img->imageData[j*img->widthStep + k * 3] = y;
+           img->imageData[j*img->widthStep + k * 3 + 1] = u;
+           img->imageData[j*img->widthStep + k * 3 + 2] = v;
+           //fprintf(fd, "x:%d y:%d y:%d u:%d v:%d\n", k,j,y,u,v); //<---------------------------------------------
 
-
-            num = 3*k+3*resWidth*(j);
-            img->imageData[num] = b;
-            img->imageData[num+1] = g;
-            img->imageData[num+2] = r;
-            //img->imageDataOrigin[num] = b;
-            //img->imageDataOrigin[num+1] = g;
-            //img->imageDataOrigin[num+2] = r;
         }
         stepY += pitchY[i];
         stepU += pitchU[i];
         stepV += pitchV[i];
     }
 
-    
+     for(j = 0; j < resHeight; j++)
+    {
+    		    for(k = 0; k < resWidth /2; k++)
+             {
+        		 if( (u >= 135) &&(u <= 141)  && v <= 128 && v >= 122) 
+        		 	left_obstacle++;	
+          	}
+     }
+
+          for(j = 0; j < resHeight; j++)
+    {
+    		    for(k = resWidth /2; k < resWidth; k++)
+             {
+        		 if( (u >= 135) &&(u <= 141)  && v <= 128 && v >= 122) 
+        		 	right_obstacle++;	
+          	}
+     }
+
+     if(left_obstacle>right_obstacle)
+     direction_flag=1; //we need to turn right
+     else
+     direction_flag=2; //we need to turn left     		 	
+
+    //fclose(fd);    //<------------------------------------------------------------------------------------------------
+
+   
     NvMediaVideoSurfaceUnlock(capSurf);
 
     return 1;
@@ -467,7 +510,7 @@ static unsigned int CaptureThread(void *params)
     primaryVideo.previous2 = NULL;
     primaryVideo.srcRect = &primarySrcRect;
     primaryVideo.dstRect = NULL;
-    
+   
 
     NvSemaphoreDecrement(ctx->semStart, NV_TIMEOUT_INFINITE);
 
@@ -488,19 +531,19 @@ static unsigned int CaptureThread(void *params)
         printf("frame=%3d, time=%llu.%09llu[s] \n", i, (ctime-stime)/1000000000LL, (ctime-stime)%1000000000LL);
 
         pthread_mutex_lock(&mutex);            // for ControlThread()
-        
+       
         if(!(capSurf = NvMediaVideoCaptureGetFrame(ctx->capture, ctx->timeout)))
         { // TBD
             MESSAGE_PRINTF("NvMediaVideoCaptureGetFrame() failed in %sThread\n", ctx->name);
             stop = NVMEDIA_TRUE;
             break;
         }
-      
+     
         if(i%3 == 0)                        // once in three loop = 10 Hz
-            pthread_cond_signal(&cond);        // ControlThread() is called
+            pthread_cond_signal(&cond);        // <------------------------------------------------------------------------------------------------------ControlThread() is called
 
         pthread_mutex_unlock(&mutex);        // for ControlThread()
-        
+       
         primaryVideo.current = capSurf;
         primaryVideo.pictureStructure = NVMEDIA_PICTURE_STRUCTURE_TOP_FIELD;
 
@@ -544,7 +587,7 @@ static unsigned int CaptureThread(void *params)
             if(!ctx->displayEnabled)
                 releaseList[0] = capSurf;
         }
-        
+       
         relList = &releaseList[0];
 
         while(*relList)
@@ -637,7 +680,7 @@ static void CheckDisplayDevice(NvMediaVideoOutputDevice deviceType, NvMediaBool 
 static void YUV2RGVtableInit(void)
 {
     int i;
-    
+   
     for( i = 0 ; i < 256 ; i++ )
     {
         table_298[i] = 298*(i-16) + 128;
@@ -652,52 +695,351 @@ static void YUV2RGVtableInit(void)
 void *ControlThread(void *unused)
 {
     int i=0;
-    char fileName[30];
+    char fileName1[30];
+    char fileName2[30];
     NvMediaTime pt1 ={0}, pt2 = {0};
     NvU64 ptime1, ptime2;
     struct timespec;
+
+    unsigned char status;
+    short speed;
+    unsigned char gain;
+    int position, position_now;
+    short angle;
+    int channel;
+    int data;
+    char sensor;
+    int k, j;
+    int tol;
+    char byte = 0x80;
+    int flag=0;
  
     IplImage* imgOrigin;
-    IplImage* imgCanny;
-    
+    IplImage* imgResult;
+   
     // cvCreateImage
-    imgOrigin = cvCreateImage(cvSize(RESIZE_WIDTH, RESIZE_HEIGHT), IPL_DEPTH_8U, 3);
-    imgCanny = cvCreateImage(cvGetSize(imgOrigin), IPL_DEPTH_8U, 1);
+
+    CarControlInit();
+    //speed controller gain set
+    //P-gain
+    gain = 20;
+    SpeedPIDProportional_Write(gain);
+    //I-gain
+    gain = 20;
+    SpeedPIDIntegral_Write(gain);
+    //D-gain
+    gain = 20;
+    SpeedPIDDifferential_Write(gain);
+    
+    //jobs to be done beforehand;
+    SpeedControlOnOff_Write(CONTROL);   // speed controller must be also ON !!!
+    PositionControlOnOff_Write(UNCONTROL); // At first position controller must be OFF !!!
+    speed = 0; // speed set     --> speed must be set when using position controller
+    DesireSpeed_Write(speed); //First speed is 50
+    gain = 20;
+    PositionProportionPoint_Write(gain); //I don't know
+    angle = 1500;
+    SteeringServoControl_Write(angle); //straight
+   // sleep(2);
+
+    //while it going 
+
+    //Here decide left/straigth/right through flag 
+
+    imgOrigin = cvCreateImage(cvSize(RESIZE_WIDTH, RESIZE_HEIGHT), IPL_DEPTH_8U, 3); //init 
+   
+    imgResult = cvCreateImage(cvGetSize(imgOrigin), IPL_DEPTH_8U, 1);
  
     while(1)
     {
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex); //capture lock
         pthread_cond_wait(&cond, &mutex);
-        
+        // 
         
         GetTime(&pt1);
         ptime1 = (NvU64)pt1.tv_sec * 1000000000LL + (NvU64)pt1.tv_nsec;
 
+       
+        Frame2Ipl(imgOrigin, imgResult); // save image to IplImage structure & resize image from 720x480 to 320x240
+        pthread_mutex_unlock(&mutex);  //again operate capture thread  
+
+
+        sprintf(fileName1, "captureImage/imgori%d.png", i);
+        sprintf(fileName2, "captureImage/imgres%d.png", i);
+        cvSaveImage(fileName1 , imgOrigin, 0);
+        cvSaveImage(fileName2 , imgResult, 0);
+
+        //here we can recognize where directionn to go
+	    for(k=0; k<3000; k++)
+        {
+	            for(j=0; j<50; j++)
+	            {
+	                data = DistanceSensor(1); //channel num2
+	                printf("channel = %d, distance = 0x%04X(%d) \n", channel, data, data);
+	                if(data>700)
+	                {
+	                    flag=1; //if object is detected in num 1 sensor
+	                }
+	            }
+	            if(flag==1)
+	            {
+	            DesireSpeed_Write(0);
+	            sleep(1); //stop during 1 sec      
+	            break;
+	            }
+        }
+        if(direction_flag==1) //we need to turn right
+        {
+                PositionControlOnOff_Write(CONTROL); // Again using position control
+                Winker_Write(LEFT_ON); //Right winker
+                SteeringServoControl_Write(1000); //Right
+                DesireSpeed_Write(30); 
+                position_now = 0; 
+                EncoderCounter_Write(position_now);//initialize
+                position = 390*12;
+                DesireEncoderCount_Write(position);
+             
+                printf("%d\n", position);
+                printf("%d\n", position_now);
+
+                tol = 5;    // tolerance
+                while(abs(position_now-position)>tol)
+                {
+                    position_now=EncoderCounter_Read();
+                    //printf("EncoderCounter_Read() = %d\n", position_now);
+                    if(position_now>position)   break;
+                }
+                sleep(1);
+
+                SteeringServoControl_Write(2000); //left
+                position_now = 0;
+                EncoderCounter_Write(position_now);
+                position = 390*14;
+                DesireEncoderCount_Write(position);
+                tol = 5;    // tolerance
+                while(abs(position_now-position)>tol)
+                {
+                    position_now=EncoderCounter_Read();
+                    //printf("EncoderCounter_Read() = %d\n", position_now);
+                   if(position_now>position)    break;
+                }
+                sleep(1);
+                Winker_Write(ALL_OFF);
+
+                PositionControlOnOff_Write(UNCONTROL); // At first position controller must be OFF !!!
+                angle = 1500;
+                SteeringServoControl_Write(angle); //straight
+                DesireSpeed_Write(30);
+                sleep(1);	
+
+         for(k=0; k<3000; k++)
+         {
+        for(j=0; j<50; j++)
+        {
+            data = DistanceSensor(3); //channel num3
+            printf("channel = %d, distance = 0x%04X(%d) \n", channel, data, data);
+            if(data<700) //If distance happen
+            {
+                flag=1; //if object is detected in num 1 sensor
+            }
+        }
+            if(flag==1)
+            {
+            DesireSpeed_Write(0);
+            sleep(1); //stop during 1 sec      
+            break;
+            }
+         }
+                PositionControlOnOff_Write(CONTROL); // Again using position control
+                Winker_Write(RIGHT_ON); //left winker
+         		  SteeringServoControl_Write(2000); //left
+                position_now = 0;
+                EncoderCounter_Write(position_now);
+                position = 390*14;
+                DesireEncoderCount_Write(position);
+                tol = 5;    // tolerance
+                while(abs(position_now-position)>tol)
+                {
+                    position_now=EncoderCounter_Read();
+                    //printf("EncoderCounter_Read() = %d\n", position_now);
+                   if(position_now>position)    break;
+                }
+                sleep(1);
+
+                SteeringServoControl_Write(1000); //Right
+                DesireSpeed_Write(30); 
+                position_now = 0; 
+                EncoderCounter_Write(position_now);//initialize
+                position = 390*12;
+                DesireEncoderCount_Write(position);
+             
+                printf("%d\n", position);
+                printf("%d\n", position_now);
+
+                tol = 5;    // tolerance
+                while(abs(position_now-position)>tol)
+                {
+                    position_now=EncoderCounter_Read();
+                    //printf("EncoderCounter_Read() = %d\n", position_now);
+                    if(position_now>position)   break;
+                }
+                sleep(1);	
+                Winker_Write(ALL_OFF);
+
+                PositionControlOnOff_Write(UNCONTROL); // At first position controller must be OFF !!!
+                angle = 1500;
+                SteeringServoControl_Write(angle); //straight
+                DesireSpeed_Write(30);
+                sleep(1);
+                DesireSpeed_Write(0);
+                sleep(10);		
+
+
+        }
+        else //we need to turn left
+        {
+                PositionControlOnOff_Write(CONTROL); // Again using position control
+               
+
+	                Winker_Write(RIGHT_ON); //left winker
+	                SteeringServoControl_Write(2000); //left
+	                DesireSpeed_Write(30); 
+	                position_now = 0; 
+	                EncoderCounter_Write(position_now);//initialize
+	                position = 390*12;
+	                DesireEncoderCount_Write(position);
+	             
+	                printf("%d\n", position);
+	                printf("%d\n", position_now);
+
+	                tol = 5;    // tolerance
+	                while(abs(position_now-position)>tol)
+	                {
+	                    position_now=EncoderCounter_Read();
+	                    //printf("EncoderCounter_Read() = %d\n", position_now);
+	                    if(position_now>position)   break;
+	                }
+	                sleep(1);
+
+	                SteeringServoControl_Write(1000); //right
+	                position_now = 0;
+	                EncoderCounter_Write(position_now);
+	                position = 390*14;
+	                DesireEncoderCount_Write(position);
+	                tol = 5;    // tolerance
+	                while(abs(position_now-position)>tol)
+	                {
+	                    position_now=EncoderCounter_Read();
+	                    //printf("EncoderCounter_Read() = %d\n", position_now);
+	                   if(position_now>position)    break;
+	                }
+	                sleep(1);
+	                Winker_Write(ALL_OFF);
+
+                PositionControlOnOff_Write(UNCONTROL); // At first position controller must be OFF !!!
+                angle = 1500;
+                SteeringServoControl_Write(angle); //straight
+                DesireSpeed_Write(30);
+                sleep(1);	
+                
+                 for(k=0; k<3000; k++)
+                 {
+	            for(j=0; j<50; j++)
+	            {
+	                data = DistanceSensor(2); //channel num2
+	                printf("channel = %d, distance = 0x%04X(%d) \n", channel, data, data);
+	                if(data<700) //If distance happen
+	                {
+	                    flag=1; //if object is detected in num 1 sensor
+	                }
+	            }
+		            if(flag==1)
+		            {
+		            DesireSpeed_Write(0);
+		            sleep(1); //stop during 1 sec      
+		            break;
+		            }
+                 }
+
+                PositionControlOnOff_Write(CONTROL); // Again using position control
+                Winker_Write(LEFT_ON); //right winker
+                SteeringServoControl_Write(1000); //right
+                position_now = 0;
+                EncoderCounter_Write(position_now);
+                position = 390*14;
+                DesireEncoderCount_Write(position);
+                tol = 5;    // tolerance
+                while(abs(position_now-position)>tol)
+                {
+                    position_now=EncoderCounter_Read();
+                    //printf("EncoderCounter_Read() = %d\n", position_now);
+                   if(position_now>position)    break;
+                }
+                sleep(1);
+
+            	  SteeringServoControl_Write(2000); //left
+                DesireSpeed_Write(30); 
+                position_now = 0; 
+                EncoderCounter_Write(position_now);//initialize
+                position = 390*12;
+                DesireEncoderCount_Write(position);
+             
+                printf("%d\n", position);
+                printf("%d\n", position_now);
+
+                tol = 5;    // tolerance
+                while(abs(position_now-position)>tol)
+                {
+                    position_now=EncoderCounter_Read();
+                    //printf("EncoderCounter_Read() = %d\n", position_now);
+                    if(position_now>position)   break;
+                }
+                sleep(1);
+                Winker_Write(ALL_OFF);
+
+                PositionControlOnOff_Write(UNCONTROL); // At first position controller must be OFF !!!
+                angle = 1500;
+                SteeringServoControl_Write(angle); //straight
+                DesireSpeed_Write(30);
+                sleep(1);
+                DesireSpeed_Write(0);
+                sleep(10);	
+
+
+        }	
+
+
         
-        Frame2Ipl(imgOrigin); // save image to IplImage structure & resize image from 720x480 to 320x240
-        pthread_mutex_unlock(&mutex);     
         
-           
-        cvCanny(imgOrigin, imgCanny, 100, 100, 3);
-        
-        sprintf(fileName, "captureImage/imgCanny%d.png", i);
-        cvSaveImage(fileName , imgCanny, 0); 
-        
+
+
+
+        /*
+        // 
+
+         */               
+
+        //cvCanny(imgOrigin, imgCanny, 100, 100, 3);
+
+
+
+       
         //sprintf(fileName, "captureImage/imgOrigin%d.png", i);
         //cvSaveImage(fileName, imgOrigin, 0);
-        
-        
+       
+       
         // TODO : control steering angle based on captured image ---------------
-        
-        
-        
+       
+
+
+
         // ---------------------------------------------------------------------
-            
+           
         GetTime(&pt2);
         ptime2 = (NvU64)pt2.tv_sec * 1000000000LL + (NvU64)pt2.tv_nsec;
-        printf("--------------------------------operation time=%llu.%09llu[s]\n", (ptime2-ptime1)/1000000000LL, (ptime2-ptime1)%1000000000LL);  
+        printf("--------------------------------operation time=%llu.%09llu[s]\n", (ptime2-ptime1)/1000000000LL, (ptime2-ptime1)%1000000000LL); 
+       
         
-         
         i++;
     }
 }
@@ -719,12 +1061,13 @@ int main(int argc, char *argv[])
     NvSemaphore *vipStartSem = NULL, *vipDoneSem = NULL;
     NvThread *vipThread = NULL;
 
+
     CaptureContext vipCtx;
     NvMediaBool deviceEnabled = NVMEDIA_FALSE;
     unsigned int displayId;
-    
+   
     pthread_t cntThread;
-    
+   
     signal(SIGINT, SignalHandler);
 
     memset(&testArgs, 0, sizeof(TestArgs));
@@ -763,7 +1106,7 @@ int main(int argc, char *argv[])
             MESSAGE_PRINTF("Bad VIP device\n");
             goto fail;
     }
-    
+   
 
     if(!(vipCapture = NvMediaVideoCaptureCreate(testArgs.vipInputtVideoStd, // interfaceFormat
                                                 NULL, // settings
@@ -772,7 +1115,7 @@ int main(int argc, char *argv[])
         MESSAGE_PRINTF("NvMediaVideoCaptureCreate() failed for vipCapture\n");
         goto fail;
     }
-  
+ 
 
     printf("2. Create NvMedia device \n");
     // Create NvMedia device
@@ -902,15 +1245,15 @@ int main(int argc, char *argv[])
 
     printf("wait for ADV7182 ... one second\n");
     sleep(1);
-    
+   
     printf("7. Kickoff \n");
     // Kickoff
     NvMediaVideoCaptureStart(vipCapture);
     NvSemaphoreIncrement(vipStartSem);
-    
+   
     printf("8. Control Thread\n");
     YUV2RGVtableInit();
-    pthread_create(&cntThread, NULL, &ControlThread, NULL); 
+    pthread_create(&cntThread, NULL, &ControlThread, NULL);
 
     printf("9. Wait for completion \n");
     // Wait for completion
@@ -932,7 +1275,7 @@ fail: // Run down sequence
     // Close output file(s)
     if(vipFile)
         fclose(vipFile);
-        
+       
     // Unbind NvMedia mixer(s) and output(s) and destroy them
     if(vipOutput[0])
     {
@@ -969,7 +1312,9 @@ fail: // Run down sequence
                 break;
         }
     }
-    
+   
     return err;
 }
+
+ 
 
