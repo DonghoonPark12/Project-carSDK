@@ -1,36 +1,4 @@
-<<<<<<< HEAD
-/*
-=======
-//For Git test - Eunji
-//For Git test -Donghun
-/*
->>>>>>> 91c41f7ef76eb87c6f3b00d5a60a624e2a434029
- * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
- * All information contained herein is proprietary and confidential to NVIDIA
- * Corporation.  Any use, reproduction, or disclosure without the written
- * permission of NVIDIA Corporation is prohibited.
- */
-// test!!
-// edited by Hyundai Autron
-// gcc -I. -I./utils `pkg-config opencv --cflags` -I./include  -c -o captureOpenCV.o captureOpenCV.c
-// gcc -I. -I./utils `pkg-config opencv --cflags` -I./include  -c -o nvthread.o nvthread.c
-// gcc  -o captureOpenCV captureOpenCV.o nvthread.o  -L ./utils -lnvmedia -lnvtestutil_board -lnvtestutil_capture_input -lnvtestutil_i2c -lpthread `pkg-config opencv --libs`
-// last update
-// dh test
-// juyeol added
-// i wish to be well this KT
-// sourctree by KT
-
-// sourctree by KT_2
-
-//hahahahahahahahah_jung
-
-
-
-
-
-
-
+//all clear
 #include <stdio.h>
 
 #include <stdlib.h>
