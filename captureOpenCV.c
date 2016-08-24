@@ -1,8 +1,8 @@
 <<<<<<< HEAD
-/* 
+/*
 =======
 //For Git test - Eunji
-
+//For Git test -Donghun
 /*
 >>>>>>> 91c41f7ef76eb87c6f3b00d5a60a624e2a434029
  * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
@@ -79,7 +79,7 @@ int greenlight=0;
 typedef struct
 {
     I2cId i2cDevice;
-  
+
     CaptureInputDeviceId vipDeviceInUse;
     NvMediaVideoCaptureInterfaceFormat vipInputtVideoStd;
     unsigned int vipInputWidth;
@@ -207,7 +207,7 @@ static int ParseOptions(int argc, char *argv[], TestArgs *args)
     args->vipCaptureTime = 0;
     args->vipCaptureCount = 0;
 
-  
+
 
     if(i < argc && argv[i][0] == '-')
     {
@@ -396,10 +396,10 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
     unsigned int pitchV[2] = {surfMap.pitchV, surfMap.pitchV2};
     unsigned int i, j, k, x;
     unsigned int stepY, stepU, stepV;
-    
+
     resWidth = RESIZE_WIDTH;
     resHeight = RESIZE_HEIGHT;
-    
+
     // Frame2Ipl
     img->nSize = 112;
     img->ID = 0;
@@ -433,15 +433,15 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
     img->BorderConst[1] = 0;
     img->BorderConst[2] = 0;
     img->BorderConst[3] = 0;
-    
+
     stepY = 0;
     stepU = 0;
     stepV = 0;
     i = 0;
-    
+
 
     greenlight = 0;
-    
+
 
     for(j = 0; j < resHeight; j++)
     {
@@ -452,7 +452,7 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
             u = pU[i][stepU+x/2];
             v = pV[i][stepV+x/2];
 
-            
+
             // YUV to RGB (fast but somewhat inaccurate)
             //r =  ( table_298[y] + table_409[v] ) >> 8;
             //g =  ( table_298[y] - table_100[u] - table_208[v] ) >> 8;
@@ -462,9 +462,9 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
             //b =  ( 298*(y-16) + 516*(u-128) + 128 ) >> 8;
 
             // YUV to RGB (accurate but slow)
-            r = 1.164*(y-16) + 1.596*(v-128); 
-            g = 1.164*(y-16) - 0.813*(v-128) - 0.391*(u-128); 
-            b = 1.164*(y-16) + 2.018*(u-128);  
+            r = 1.164*(y-16) + 1.596*(v-128);
+            g = 1.164*(y-16) - 0.813*(v-128) - 0.391*(u-128);
+            b = 1.164*(y-16) + 2.018*(u-128);
 
 
             num = 3*k+3*resWidth*(j);
@@ -476,7 +476,7 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
             //img->imageDataOrigin[num+2] = r;
             //-37
             //if( u>100  &&  u<130  &&  v>50   &&   v<90  ) {
-            // UV of Green Value 
+            // UV of Green Value
             if( u > 75 && u < 105 && v > 90  &&  v < 120) {
                 //count green light
                 greenlight++;
@@ -486,7 +486,7 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
             else {
                 // 검정색으로
                 result->imageData[j*result->widthStep + j] = (char)0;
-            }            
+            }
 
            img->imageData[j*img->widthStep + k * 3] = y;
            img->imageData[j*img->widthStep + k * 3 + 1] = u;
@@ -502,7 +502,7 @@ static int Frame2Ipl(IplImage* img, IplImage* result)
 
     //fclose(fd);
 
-    
+
     NvMediaVideoSurfaceUnlock(capSurf);
 
     return 1;
@@ -528,7 +528,7 @@ static unsigned int CaptureThread(void *params)
     primaryVideo.previous2 = NULL;
     primaryVideo.srcRect = &primarySrcRect;
     primaryVideo.dstRect = NULL;
-    
+
 
     NvSemaphoreDecrement(ctx->semStart, NV_TIMEOUT_INFINITE);
 
@@ -552,19 +552,19 @@ static unsigned int CaptureThread(void *params)
         //printf("frame=%3d, time=%llu.%09llu[s] \n", i, (ctime-stime)/1000000000LL, (ctime-stime)%1000000000LL);
 
         pthread_mutex_lock(&mutex);            // for ControlThread()
-        
+
         if(!(capSurf = NvMediaVideoCaptureGetFrame(ctx->capture, ctx->timeout)))
         { // TBD
             MESSAGE_PRINTF("NvMediaVideoCaptureGetFrame() failed in %sThread\n", ctx->name);
             stop = NVMEDIA_TRUE;
             break;
         }
-      
+
         if(i%3 == 0)                        // once in three loop = 10 Hz
             pthread_cond_signal(&cond);        // ControlThread() is called
 
         pthread_mutex_unlock(&mutex);        // for ControlThread()
-        
+
         primaryVideo.current = capSurf;
         primaryVideo.pictureStructure = NVMEDIA_PICTURE_STRUCTURE_TOP_FIELD;
 
@@ -608,7 +608,7 @@ static unsigned int CaptureThread(void *params)
             if(!ctx->displayEnabled)
                 releaseList[0] = capSurf;
         }
-        
+
         relList = &releaseList[0];
 
         while(*relList)
@@ -701,7 +701,7 @@ static void CheckDisplayDevice(NvMediaVideoOutputDevice deviceType, NvMediaBool 
 static void YUV2RGVtableInit(void)
 {
     int i;
-    
+
     for( i = 0 ; i < 256 ; i++ )
     {
         table_298[i] = 298*(i-16) + 128;
@@ -723,11 +723,11 @@ void *ControlThread(void *unused)
 
     IplImage* imgOrigin;
     IplImage* imgCanny;
-    
+
     // cvCreateImage
     imgOrigin = cvCreateImage(cvSize(RESIZE_WIDTH, RESIZE_HEIGHT), IPL_DEPTH_8U, 3);
     imgCanny = cvCreateImage(cvGetSize(imgOrigin), IPL_DEPTH_8U, 1);
- 
+
     int angle, speed;
     IplImage* imgOrigin;
     IplImage* imgResult;
@@ -738,7 +738,7 @@ void *ControlThread(void *unused)
     CarControlInit();
     PositionControlOnOff_Write(UNCONTROL);
     SpeedControlOnOff_Write(1);
-    
+
     //speed controller gain set
     //P-gain
     gain = SpeedPIDProportional_Read();        // default value = 10, range : 1~50
@@ -761,45 +761,45 @@ void *ControlThread(void *unused)
     SteeringServoControl_Write(angle);
     // cvCreateImage
     imgOrigin = cvCreateImage(cvSize(RESIZE_WIDTH, RESIZE_HEIGHT), IPL_DEPTH_8U, 3);
-    
+
     imgResult = cvCreateImage(cvGetSize(imgOrigin), IPL_DEPTH_8U, 1);
     int flag = 1;
     while(1)
     {
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&cond, &mutex);
-        
-        
+
+
         GetTime(&pt1);
         ptime1 = (NvU64)pt1.tv_sec * 1000000000LL + (NvU64)pt1.tv_nsec;
 
-        
+
 
         Frame2Ipl(imgOrigin); // save image to IplImage structure & resize image from 720x480 to 320x240
-        pthread_mutex_unlock(&mutex);     
-        
-           
-        cvCanny(imgOrigin, imgCanny, 100, 100, 3);
-        
-        sprintf(fileName, "captureImage/imgCanny%d.png", i);
-        cvSaveImage(fileName , imgCanny, 0); 
-		Frame2Ipl(imgOrigin, imgResult); // save image to IplImage structure & resize image from 720x480 to 320x240
-        pthread_mutex_unlock(&mutex);     
-        
-           
-        //cvCanny(imgOrigin, imgCanny, 100, 100, 3);
-        
-        sprintf(fileName, "captureImage/imgyuv%d.png", i);
-        cvSaveImage(fileName , imgOrigin, 0); 
+        pthread_mutex_unlock(&mutex);
 
-        
+
+        cvCanny(imgOrigin, imgCanny, 100, 100, 3);
+
+        sprintf(fileName, "captureImage/imgCanny%d.png", i);
+        cvSaveImage(fileName , imgCanny, 0);
+		Frame2Ipl(imgOrigin, imgResult); // save image to IplImage structure & resize image from 720x480 to 320x240
+        pthread_mutex_unlock(&mutex);
+
+
+        //cvCanny(imgOrigin, imgCanny, 100, 100, 3);
+
+        sprintf(fileName, "captureImage/imgyuv%d.png", i);
+        cvSaveImage(fileName , imgOrigin, 0);
+
+
         //sprintf(fileName, "captureImage/imgOrigin%d.png", i);
         //cvSaveImage(fileName, imgOrigin, 0);
-        
-        
+
+
         // TODO : control steering angle based on captured image ---------------
-        
-        //speed set    
+
+        //speed set
         speed = DesireSpeed_Read();
         printf("DesireSpeed_Read() = %d \n", speed);
         //speed = -10;
@@ -843,12 +843,12 @@ void *ControlThread(void *unused)
         }
 
         // ---------------------------------------------------------------------
-            
+
         GetTime(&pt2);
         ptime2 = (NvU64)pt2.tv_sec * 1000000000LL + (NvU64)pt2.tv_nsec;
-        printf("--------------------------------operation time=%llu.%09llu[s]\n", (ptime2-ptime1)/1000000000LL, (ptime2-ptime1)%1000000000LL);  
-        
-         
+        printf("--------------------------------operation time=%llu.%09llu[s]\n", (ptime2-ptime1)/1000000000LL, (ptime2-ptime1)%1000000000LL);
+
+
         i++;
     }
 
@@ -874,9 +874,9 @@ int main(int argc, char *argv[])
     CaptureContext vipCtx;
     NvMediaBool deviceEnabled = NVMEDIA_FALSE;
     unsigned int displayId;
-    
+
     pthread_t cntThread;
-    
+
     signal(SIGINT, SignalHandler);
 
     memset(&testArgs, 0, sizeof(TestArgs));
@@ -915,7 +915,7 @@ int main(int argc, char *argv[])
             MESSAGE_PRINTF("Bad VIP device\n");
             goto fail;
     }
-    
+
 
     if(!(vipCapture = NvMediaVideoCaptureCreate(testArgs.vipInputtVideoStd, // interfaceFormat
                                                 NULL, // settings
@@ -924,7 +924,7 @@ int main(int argc, char *argv[])
         MESSAGE_PRINTF("NvMediaVideoCaptureCreate() failed for vipCapture\n");
         goto fail;
     }
-  
+
 
     printf("2. Create NvMedia device \n");
     // Create NvMedia device
@@ -989,7 +989,7 @@ int main(int argc, char *argv[])
         goto fail;
     }
 
- 
+
 
     printf("5. Open output file(s) \n");
     // Open output file(s)
@@ -1054,15 +1054,15 @@ int main(int argc, char *argv[])
 
     printf("wait for ADV7182 ... one second\n");
     sleep(1);
-    
+
     printf("7. Kickoff \n");
     // Kickoff
     NvMediaVideoCaptureStart(vipCapture);
     NvSemaphoreIncrement(vipStartSem);
-    
+
     printf("8. Control Thread\n");
     YUV2RGVtableInit();
-    pthread_create(&cntThread, NULL, &ControlThread, NULL); 
+    pthread_create(&cntThread, NULL, &ControlThread, NULL);
 
     printf("9. Wait for completion \n");
     // Wait for completion
@@ -1084,7 +1084,7 @@ fail: // Run down sequence
     // Close output file(s)
     if(vipFile)
         fclose(vipFile);
-        
+
     // Unbind NvMedia mixer(s) and output(s) and destroy them
     if(vipOutput[0])
     {
