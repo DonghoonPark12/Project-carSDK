@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* 
 =======
 //For Git test - Eunji
@@ -21,7 +20,7 @@
 // i wish to be well this KT
 // sourctree by KT
 
-// sourctree by KT_2
+
 
 //hahahahahahahahah_jung
 
@@ -31,27 +30,18 @@
 
 
 
-#include <stdio.h>
 
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <sys/time.h>
-
-#include <nvcommon.h>
-#include <nvmedia.h>
-
-#include <testutil_board.h>
-#include <testutil_capture_input.h>
-
-#include "nvthread.h"
 
 #include <highgui.h>
 #include <cv.h>
 #include <ResTable_720To320.h>
 #include <pthread.h>
 #include <unistd.h>     // for sleep
+<<<<<<< HEAD
+=======
 #include "car_lib.h"
+>>>>>>> 91c41f7ef76eb87c6f3b00d5a60a624e2a434029
+
 #define VIP_BUFFER_SIZE 6
 #define VIP_FRAME_TIMEOUT_MS 100
 #define VIP_NAME "vip"
@@ -175,8 +165,11 @@ static void DisplayUsage(void)
     printf("Brief: Displays this help if no arguments are given. Engages the respective capture module whenever a single \'c\' or \'v\' argument is supplied using default values for the missing parameters.\n");
     printf("Options:\n");
     printf("-va <aspect ratio>    VIP aspect ratio (default = 1.78 (16:9))\n");
+<<<<<<< HEAD
     printf("-vmr <width>x<height> VIP mixer resolution (default 800x480)\n");
+=======
     printf("-vmr <width>x<height> VIP mixer resEEolution (default 800x480)\n");
+>>>>>>> 91c41f7ef76eb87c6f3b00d5a60a624e2a434029
     printf("-vf <file name>       VIP output file name; default = off\n");
     printf("-vt [seconds]         VIP capture duration (default = 10 secs); overridden by -vn; default = off\n");
     printf("-vn [frames]          # VIP frames to be captured (default = 300); default = on if -vt is not used\n");
