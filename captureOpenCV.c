@@ -1,4 +1,5 @@
 //all clear
+//terminal test
 #include <stdio.h>
 
 #include <stdlib.h>
