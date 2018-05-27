@@ -1,6 +1,4 @@
-## [http://eswcontest.com](http://eswcontest.com/htm/main.php)  
-
-## Project-carSDK
+## [제14회 임베디드 SW 경진대회: 자율주행차 부문 2위](http://eswcontest.com/htm/main.php)  
 
 ---
 ### OpenCV 강좌
